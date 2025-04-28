@@ -3,7 +3,7 @@
 
 typedef struct ht_item ht_item;
 typedef struct hash_table hash_table;
-typedef struct linked_lsit linked_list;
+typedef struct linked_list linked_list;
 
 // Структура элемента хэш-таблицы
 struct ht_item {
@@ -13,6 +13,7 @@ struct ht_item {
 
 struct hash_table {
   ht_item** items; // Массив элементов
+  linked_list** overflow_bucket; // Этот список используется для обработки коллизий
   unsigned int size; // Размер таблицы 
   unsigned int count; // Количество не пустых элементов
 };
@@ -53,7 +54,10 @@ linked_list* allocate_list();
 // Функция добавления элемента в список 
 linked_list* linked_insert(linked_list* list, ht_item* item);
 // Функция удаления списка 
-linked_list* linked_remove(linked_list* list);
+ht_item* linked_remove(linked_list* list);
 // Функция освобождения выделенной памяти для списка
 void free_linked(linked_list* list);
-
+// Функция выделения памяти для списка в таблице
+linked_list* create_overflow_bucket(hash_table* table);
+// Функция освобождения памяти для односвязного спика
+void free_overflow_bucket(hash_table* table);

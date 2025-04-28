@@ -12,8 +12,96 @@ unsigned long hash_function(char* str) {
   return counter % CAPACITY;
 }
 
-void handle_collisions(hash_table* table, ht_item* item) {
-  return;
+linked_list* allocate_list() {
+  linked_list* list = (linked_list*) malloc(sizeof(linked_list*));
+  return list;
+}
+
+linked_list* linked_insert(linked_list* list, ht_item* item) {
+  if(!list) {
+    linked_list* head = allocate_list();
+    head->item = item;
+    head->next = NULL;
+    list = head;
+    return list;
+  }
+  else if(!list->next) {
+    linked_list* node = allocate_list();
+    node->item = item;
+    node->next = NULL;
+    list->next = node;
+    return list;
+  }
+
+  linked_list* temp = list;
+  while(temp->next->next) {
+    temp = temp->next;
+  }
+
+  linked_list* node = allocate_list();
+  node->item = item;
+  node->next = NULL;
+  temp->next = node;
+  return list;
+}
+
+ht_item* linked_remove(linked_list* list) {
+  if(!list) {
+    return NULL;
+  } 
+  else if(!list->next) {
+    return NULL;
+  }
+  linked_list* node = list->next;
+  linked_list* temp = list;
+  list = node;
+  ht_item* it = NULL;
+  memcpy(temp->next, it, sizeof(ht_item));
+  free(temp->item->key);
+  free(temp->item->value);
+  free(temp->item);
+  free(temp);
+  return it;
+}
+
+void free_linked(linked_list* list) {
+  linked_list* temp = list;
+  while(list) {
+    temp = list;
+    list = list->next;
+    free(temp->item->key);
+    free(temp->item->value);
+    free(temp->item);
+    free(temp);
+  }
+}
+
+linked_list* create_overflow_bucket(hash_table* table) {
+  linked_list** buckets = (linked_list**) calloc(table->size, sizeof(linked_list*));
+  for(int i = 0; i < table->size; i++)
+    buckets[i] = NULL;
+  return buckets;
+}
+
+void free_overflow_bucket(hash_table* table) {
+  linked_list** buckets = table->overflow_bucket;
+  for(int i = 0; i < table->size; i++)
+    free_linked(buckets[i]);
+  free(buckets);
+}
+
+void handle_collisions(hash_table* table, unsigned long index, ht_item* item) {
+  linked_list* head = table->overflow_bucket[index];
+  if(head == NULL) {
+    head = allocate_list();
+    head->item = item;
+    table->overflow_bucket[index] = head;
+    return;
+  }
+  else {
+    table->overflow_bucket[index] = linked_insert(head, item);
+    return;
+  }
 }
 
 ht_item* create_item(char* key, char* value) {
@@ -36,6 +124,7 @@ hash_table* create_table(int size) {
 
   for(int i = 0; i < table->size; i++)
     table->items[i] = NULL;
+  table->overflow_bucket = create_overflow_bucket(table);
   
   return table;
 }
@@ -53,7 +142,7 @@ void free_table(hash_table* table) {
       free_item(item);
     }
   }
-
+  free_overflow_bucket(table);
   free(table->items);
   free(table);
 }
@@ -77,7 +166,7 @@ void ht_insert(hash_table* table, char* key, char* value) {
       strcpy(table->items[index]->value, value);
       return;
     } else {
-      handle_collisions(table, item);
+      handle_collisions(table, index, item);
       return;
     }
   }
@@ -112,5 +201,4 @@ void print_table(hash_table* table) {
     }
   }
   printf("Hash Table Info: \n Size: %i\n Count: %i\n", table->size, table->count);
-} 
-
+}

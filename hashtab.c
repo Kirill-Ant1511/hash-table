@@ -34,9 +34,9 @@ linked_list* linked_insert(linked_list* list, ht_item* item) {
   }
 
   linked_list* temp = list;
-  while(temp->next->next) {
+  while(temp->next)
     temp = temp->next;
-  }
+  
 
   linked_list* node = allocate_list();
   node->item = item;
@@ -76,7 +76,7 @@ void free_linked(linked_list* list) {
   }
 }
 
-linked_list* create_overflow_bucket(hash_table* table) {
+linked_list** create_overflow_bucket(hash_table* table) {
   linked_list** buckets = (linked_list**) calloc(table->size, sizeof(linked_list*));
   for(int i = 0; i < table->size; i++)
     buckets[i] = NULL;
@@ -176,12 +176,71 @@ char* ht_search(hash_table* table, char* key) {
   unsigned long index = hash_function(key);
 
   ht_item *item = table->items[index];
-  if(item != NULL) {
-    if(strcmp(item->key, key) == 0) {
+  linked_list* head = table->overflow_bucket[index];
+
+  while(item != NULL) {
+    if(strcmp(item->key, key) == 0) 
       return item->value;
-    }
+    if(head == NULL) 
+      return NULL;
+    item = head->item;
+    head = head->next;
+    
   }
   return NULL;
+}
+
+void ht_delete(hash_table* table, char* key) {
+  unsigned long index = hash_function(key);
+  ht_item* item = table->items[index];
+  linked_list* head = table->overflow_bucket[index];
+
+  if(item == NULL) {
+    return;
+  }
+  else {
+    // Случай когда нету колизии
+    if(head == NULL && strcmp(item->key, key) == 0) {
+      table->items[index] = NULL;
+      free_item(item);
+      table->count--;
+      return;
+    } 
+    else if(head != NULL) {
+      if(strcmp(item->key, key) == 0) {
+        free_item(item);
+        linked_list* node = head;
+        head = head->next;
+        node->next = NULL;
+        table->items[index] = create_item(node->item->key, node->item->value);
+        free_linked(node);
+        table->overflow_bucket[index] = head;
+        return;
+      }
+    
+
+      linked_list* curr = head;
+      linked_list* prev = NULL;
+
+      while(curr) {
+        if(strcmp(curr->item->key, key) == 0) {
+          if(prev == NULL) {
+            free_linked(head);
+            table->overflow_bucket[index] = NULL;
+            return;
+          } else {
+            prev->next = curr->next;
+            curr->next = NULL;
+            free_linked(curr);
+            table->overflow_bucket[index] = head;
+            return;
+          }
+        }
+        prev = curr;
+        curr = curr->next;
+      }
+    }
+  }
 }
 
 void print_search(hash_table* ht, char* key) {
@@ -195,10 +254,21 @@ void print_search(hash_table* ht, char* key) {
 }
 
 void print_table(hash_table* table) {
+  printf("\n\n------------Hash Table---------------\n");
   for(int i = 0; i < table->size; i++) {
     if(table->items[i]) {
-      printf("Index: %i, Key: %s, Value: %s\n\n", i, table->items[i]->key, table->items[i]->value);
+      printf("Index: %d, Key: %s, Value: %s\n", i, table->items[i]->key, table->items[i]->value);
+      if(table->overflow_bucket[i]) {
+        printf("\t>-Overflow Bucket Index: %d->\t", i);
+        linked_list* head = table->overflow_bucket[i];
+        while(head) {
+          printf("Key: %s, Value: %s\n", head->item->key, head->item->value);
+          head = head->next;
+        }
+        printf("---------------------------\n");
+      }
     }
   }
   printf("Hash Table Info: \n Size: %i\n Count: %i\n", table->size, table->count);
+  printf("---------------------------\n\n\n");
 }

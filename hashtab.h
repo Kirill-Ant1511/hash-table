@@ -36,7 +36,7 @@ char* ht_search(hash_table* table, char* key);
 // Функция удаления элемента из таблицы
 void ht_delete(hash_table* table, char* key);
 // Функция обработки колизии
-void handle_collisions(hash_table* table, ht_item* item);
+void handle_collisions(hash_table* table, unsigned long index, ht_item* item);
 // Функция вывода поиска
 void print_search(hash_table* table, char* key);
 // Функция вывода таблицы 
@@ -58,6 +58,6 @@ ht_item* linked_remove(linked_list* list);
 // Функция освобождения выделенной памяти для списка
 void free_linked(linked_list* list);
 // Функция выделения памяти для списка в таблице
-linked_list* create_overflow_bucket(hash_table* table);
+linked_list** create_overflow_bucket(hash_table* table);
 // Функция освобождения памяти для односвязного спика
 void free_overflow_bucket(hash_table* table);
